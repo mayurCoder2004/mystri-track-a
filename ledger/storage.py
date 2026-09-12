@@ -59,6 +59,13 @@ def invoice_by_key(db, customer_id, invoice_number):
 
 
 def insert_invoice(db, row):
+    old = invoice_by_key(db, row['customer_id'], row['invoice_number'])
+
+    if old:
+        if old['amount'] == row['amount'] and old['due_date'] == row['due_date']:
+            return 'skipped'
+        raise ValueError('Invoice identity already exists with different details')
+
     db.execute('''INSERT INTO invoices (customer_id, invoice_number, amount, due_date)
                   VALUES (:customer_id, :invoice_number, :amount, :due_date)''', row)
     return 'imported'
@@ -74,3 +81,4 @@ def insert_payment(db, row, invoice_id):
                   VALUES (:payment_id, :customer_id, :invoice_number, :amount, :invoice_id)''',
                {**row, 'invoice_id': invoice_id})
     return 'imported'
+

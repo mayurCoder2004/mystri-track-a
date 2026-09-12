@@ -57,11 +57,54 @@ class SmokeTests(unittest.TestCase):
         )
         self.assertEqual(payment['amount'], 1250.00)
 
+    def test_duplicate_invoice_is_skipped(self):
+        csv = (
+            'customer_id,invoice_number,amount,due_date\n'
+            'HARBOR,SMOKE-DUP-1,1250.00,2026-09-15\n'
+        )
+
+        first = importing.import_csv(self.db, csv, 'invoices')
+        second = importing.import_csv(self.db, csv, 'invoices')
+
+        self.assertEqual(first['imported'], 1)
+        self.assertEqual(second['skipped'], 1)
+
+        invoices = [
+            r for r in reporting.invoices(self.db)
+            if r['customer_id'] == 'HARBOR'
+            and r['invoice_number'] == 'SMOKE-DUP-1'
+        ]
+        self.assertEqual(len(invoices), 1)
+
+    def test_invoice_identity_change_is_rejected(self):
+        original = (
+            'customer_id,invoice_number,amount,due_date\n'
+            'HARBOR,SMOKE-ID-1,500.00,2026-09-15\n'
+        )
+        changed = (
+            'customer_id,invoice_number,amount,due_date\n'
+            'HARBOR,SMOKE-ID-1,600.00,2026-09-15\n'
+        )
+
+        first = importing.import_csv(self.db, original, 'invoices')
+        second = importing.import_csv(self.db, changed, 'invoices')
+
+        self.assertEqual(first['imported'], 1)
+        self.assertEqual(second['rejected'], 1)
+        self.assertEqual(second['errors'][0]['line'], 2)
+
+        invoice = next(
+            r for r in reporting.invoices(self.db)
+            if r['customer_id'] == 'HARBOR'
+            and r['invoice_number'] == 'SMOKE-ID-1'
+        )
+        self.assertEqual(invoice['amount'], 500.00)
+        self.assertEqual(invoice['due_date'], '2026-09-15')
+
     def test_export_has_header(self):
         self.assertTrue(reporting.export_csv(self.db).startswith('customer_id,invoice_number,amount,paid,balance,status'))
 
 
 if __name__ == '__main__':
     unittest.main()
-
 
