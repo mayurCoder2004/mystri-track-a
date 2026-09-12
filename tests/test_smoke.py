@@ -34,9 +34,34 @@ class SmokeTests(unittest.TestCase):
         invoice = next(r for r in reporting.invoices(self.db) if r['invoice_number'] == 'INV-100')
         self.assertEqual(invoice['paid'], 20.00)
 
+    def test_payment_does_not_match_by_amount(self):
+        result = importing.import_csv(
+            self.db,
+            'payment_id,customer_id,invoice_number,amount\n'
+            'SMOKE-P2,MAPLE,INV-NOT-FOUND,1250.00\n',
+            'payments',
+        )
+
+        self.assertEqual(result['imported'], 1)
+
+        harbor_invoice = next(
+            r for r in reporting.invoices(self.db)
+            if r['invoice_number'] == 'INV-100'
+        )
+        self.assertEqual(harbor_invoice['paid'], 0.00)
+
+        unmatched = reporting.overview(self.db)['unmatched_payments']
+        payment = next(
+            p for p in unmatched
+            if p['payment_id'] == 'SMOKE-P2'
+        )
+        self.assertEqual(payment['amount'], 1250.00)
+
     def test_export_has_header(self):
         self.assertTrue(reporting.export_csv(self.db).startswith('customer_id,invoice_number,amount,paid,balance,status'))
 
 
 if __name__ == '__main__':
     unittest.main()
+
+
