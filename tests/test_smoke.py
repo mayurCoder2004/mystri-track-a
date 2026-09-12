@@ -138,6 +138,24 @@ class SmokeTests(unittest.TestCase):
         self.assertTrue(all(invoice['status'] == 'open' for invoice in open_invoices))
         self.assertTrue(all(invoice['status'] == 'paid' for invoice in paid_invoices))
 
+    def test_export_preserves_two_decimal_money(self):
+        csv = (
+            'customer_id,invoice_number,amount,due_date\n'
+            'HARBOR,SMOKE-MONEY-1,19.99,2026-09-15\n'
+        )
+
+        result = importing.import_csv(self.db, csv, 'invoices')
+        self.assertEqual(result['imported'], 1)
+
+        exported = reporting.export_csv(self.db)
+
+        row = next(
+            line for line in exported.splitlines()
+            if 'SMOKE-MONEY-1' in line
+        )
+
+        self.assertIn('19.99', row)
+
     def test_export_has_header(self):
         self.assertTrue(reporting.export_csv(self.db).startswith('customer_id,invoice_number,amount,paid,balance,status'))
 

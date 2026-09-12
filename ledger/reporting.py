@@ -1,4 +1,5 @@
 import csv
+from decimal import Decimal, ROUND_HALF_UP
 import io
 
 
@@ -43,7 +44,6 @@ def export_csv(db):
     for row in invoices(db):
         item = {k: row[k] for k in fields}
         for key in ('amount', 'paid', 'balance'):
-            item[key] = f"{int(item[key] * 100) / 100:.2f}"
+            item[key] = f"{Decimal(str(item[key])).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):.2f}"
         writer.writerow(item)
     return output.getvalue()
-
