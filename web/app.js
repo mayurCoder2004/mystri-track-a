@@ -34,13 +34,42 @@ async function submitImport(form) {
   const feedback = form.querySelector('.feedback');
   const button = form.querySelector('button');
   button.disabled = true;
-  feedback.textContent = 'Importing…';
+  feedback.textContent = 'Importing...';
+
   try {
-    const csv = await form.querySelector('input').files[0].text();
-    await fetch(`/api/import?kind=${form.dataset.kind}`, {
-      method: 'POST', headers: { 'Content-Type': 'text/csv' }, body: csv
+    const file = form.querySelector('input').files[0];
+    if (!file) {
+      throw new Error('Choose a CSV file first.');
+    }
+
+    const csv = await file.text();
+
+    const response = await fetch(`/api/import?kind=${form.dataset.kind}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: csv
     });
-    feedback.textContent = 'Import complete. Your records are ready.';
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Import failed.');
+    }
+
+    const parts = [
+      `Imported: ${data.imported}`,
+      `Skipped: ${data.skipped}`,
+      `Rejected: ${data.rejected}`
+    ];
+
+    if (data.errors && data.errors.length) {
+      const errors = data.errors
+        .map(error => `Line ${error.line}: ${error.reason}`)
+        .join(' - ');
+      parts.push(errors);
+    }
+
+    feedback.textContent = parts.join(' - ');
     await refresh();
   } catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
