@@ -128,6 +128,16 @@ class SmokeTests(unittest.TestCase):
             )
         )
 
+    def test_invoice_status_filter_distinguishes_open_and_paid(self):
+        open_invoices = reporting.invoices(self.db, 'open')
+        paid_invoices = reporting.invoices(self.db, 'paid')
+
+        self.assertTrue(open_invoices)
+        self.assertTrue(paid_invoices)
+
+        self.assertTrue(all(invoice['status'] == 'open' for invoice in open_invoices))
+        self.assertTrue(all(invoice['status'] == 'paid' for invoice in paid_invoices))
+
     def test_export_has_header(self):
         self.assertTrue(reporting.export_csv(self.db).startswith('customer_id,invoice_number,amount,paid,balance,status'))
 
