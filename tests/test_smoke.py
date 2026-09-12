@@ -101,10 +101,36 @@ class SmokeTests(unittest.TestCase):
         self.assertEqual(invoice['amount'], 500.00)
         self.assertEqual(invoice['due_date'], '2026-09-15')
 
+    def test_invalid_row_does_not_abort_import(self):
+        csv = (
+            'customer_id,invoice_number,amount,due_date\n'
+            'HARBOR,SMOKE-ROW-1,100.00,2026-09-15\n'
+            'MAPLE,SMOKE-ROW-2,not-a-number,2026-09-16\n'
+            'NORTH,SMOKE-ROW-3,200.00,2026-09-17\n'
+        )
+
+        result = importing.import_csv(self.db, csv, 'invoices')
+
+        self.assertEqual(result['imported'], 2)
+        self.assertEqual(result['rejected'], 1)
+        self.assertEqual(result['errors'][0]['line'], 3)
+
+        self.assertIsNotNone(
+            next(
+                r for r in reporting.invoices(self.db)
+                if r['invoice_number'] == 'SMOKE-ROW-1'
+            )
+        )
+        self.assertIsNotNone(
+            next(
+                r for r in reporting.invoices(self.db)
+                if r['invoice_number'] == 'SMOKE-ROW-3'
+            )
+        )
+
     def test_export_has_header(self):
         self.assertTrue(reporting.export_csv(self.db).startswith('customer_id,invoice_number,amount,paid,balance,status'))
 
 
 if __name__ == '__main__':
     unittest.main()
-
