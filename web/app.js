@@ -69,7 +69,7 @@ async function submitImport(form) {
       parts.push(errors);
     }
 
-    feedback.textContent = parts.join(' - ');
+    feedback.textContent = `${file.name}: ${parts.join(' - ')}`;
     await refresh();
   } catch (error) {
     feedback.textContent = `Import failed: ${error.message}`;
